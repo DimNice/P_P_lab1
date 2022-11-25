@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <ctime>
 #include <fstream>
+#include <omp.h>
 using namespace std;
 int main()
 {
@@ -37,7 +38,7 @@ int main()
     out.open("C:/Users/admin/Desktop/cute_result.txt");
     out_python.open("C:/Users/admin/Desktop/result_C++.txt");
    
-    for (int ka = 10; ka < 101; ka += 10)
+    for (int ka = 100; ka < 1001; ka += 100)
     {
         fstream fs("C:/Users/admin/Desktop/M.txt");
         fstream fs1("C:/Users/admin/Desktop/M1.txt");
@@ -65,6 +66,8 @@ int main()
             }
         }
         c = new double* [row1];
+        int number_of_threads = 4;
+# pragma omp parallel for num_threads(number_of_threads)
         for (int i = 0; i < row1; i++)
         {
             c[i] = new double[col2];
@@ -92,8 +95,9 @@ int main()
         out << "\nTime = ";
         out << time << " tiks" << endl;
         out << "_________________________" << endl;
+        delete[] a;
+        delete[] b;
+        delete[] c;
     }
     return 0;
 }
-
-
