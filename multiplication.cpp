@@ -37,12 +37,10 @@ int main()
     std::ofstream out_python;
     out.open("C:/Users/admin/Desktop/cute_result.txt");
     out_python.open("C:/Users/admin/Desktop/result_C++.txt");
-   
     for (int ka = 100; ka < 1001; ka += 100)
     {
         fstream fs("C:/Users/admin/Desktop/M.txt");
         fstream fs1("C:/Users/admin/Desktop/M1.txt");
-        int time = clock();
         row1 = row2 = col1 = col2=ka;
         a = new double* [row1];
         for (int i = 0; i < row1; i++)
@@ -66,10 +64,17 @@ int main()
             }
         }
         c = new double* [row1];
-        int number_of_threads = 4;
-# pragma omp parallel for num_threads(number_of_threads)
+        omp_set_dynamic(0);
+        omp_set_num_threads(4);
+
+        
+        double start = omp_get_wtime();
+#pragma omp parallel for
         for (int i = 0; i < row1; i++)
         {
+            int num = omp_get_num_threads();
+            cout << "\nnumber_of_threads = ";
+            cout << num << endl;
             c[i] = new double[col2];
             for (int j = 0; j < col2; j++)
             {
@@ -78,9 +83,18 @@ int main()
                     c[i][j] += a[i][k] * b[k][j];
             }
         }
+        double end = omp_get_wtime();
+        double time = end - start;
+        out << "\nTime = ";
+        out << time << " tiks" << endl;
+        out << "for" << endl;
+        out << "Matrix {";
+        out << ka << "x" << ka << '}' << endl;
+        out << "_________________________" << endl;
+        cout << "\nTime = ";
+        cout << time << " tik";
         if (out_python.is_open())
         {
-            
             for (int i = 0; i < row1; i++)
             {
                 for (int j = 0; j < col2; j++)
@@ -88,13 +102,6 @@ int main()
                 out_python << std::endl;
             }
         }
-        cout << "\nTime = ";
-        cout << time << " tik";
-        out << "Matrix {";
-        out << ka << "x" << ka << '}' << endl;
-        out << "\nTime = ";
-        out << time << " tiks" << endl;
-        out << "_________________________" << endl;
         delete[] a;
         delete[] b;
         delete[] c;
