@@ -1,99 +1,110 @@
 #include <iostream>
-#include <cstdio>
-#include <ctime>
+#include <chrono>
+#include <mpi.h>
+#include <stdio.h>
+#include <string>
+#include <windows.h>
+#include <vector>
 #include <fstream>
 using namespace std;
-int main()
-{
-    int row1, row2, col1, col2;
-    double** a, ** b, ** c;
-    system("chcp 1251");
-    system("cls");
-    fstream fs("C:/Users/admin/Desktop/M.txt");
-    fstream fs1("C:/Users/admin/Desktop/M1.txt");
-    /*std::ofstream in1;
-    in1.open("C:/Users/admin/Desktop/M1.txt");
-    if (in1.is_open())
-    {
-        for (int i = 0; i < 1000000; i++)
-        {
-            in1 << rand() % 110 - 55 << "\n";
-        }
+
+void print(vector<int>& v) {
+    for (int i = 0; i < v.size(); ++i) {
+        cout << v[i] << endl;
     }
-    cout << "Pervuy gotov";
-    std::ofstream in;
-    in.open("C:/Users/admin/Desktop/M.txt");
-    if (in.is_open())
-    {
-        for (int i = 0; i < 1000000; i++)
-        {
-            in << rand() % 100 - 50 << "\n";
-        }
-    }
-    cout << "Vtoroy gotov";
-    */
-    std::ofstream out;
-    std::ofstream out_python;
-    out.open("C:/Users/admin/Desktop/cute_result.txt");
-    out_python.open("C:/Users/admin/Desktop/result_C++.txt");
-   
-    for (int ka = 10; ka < 101; ka += 10)
-    {
-        fstream fs("C:/Users/admin/Desktop/M.txt");
-        fstream fs1("C:/Users/admin/Desktop/M1.txt");
-        int time = clock();
-        row1 = row2 = col1 = col2=ka;
-        a = new double* [row1];
-        for (int i = 0; i < row1; i++)
-        {
-            a[i] = new double[col1];
-            for (int j = 0; j < col1; j++)
-            {
-                fs >> a[i][j];
-                //cout << a[i][j]<< endl;
-            }
-        }
-        b = new double* [row2];
-        for (int i = 0; i < row2; i++)
-        {
-            b[i] = new double[col2];
-            for (int j = 0; j < col2; j++)
-            {
-                
-                fs1 >> b[i][j];
-                //cout << b[i][j] << endl;
-            }
-        }
-        c = new double* [row1];
-        for (int i = 0; i < row1; i++)
-        {
-            c[i] = new double[col2];
-            for (int j = 0; j < col2; j++)
-            {
-                c[i][j] = 0;
-                for (int k = 0; k < col1; k++)
-                    c[i][j] += a[i][k] * b[k][j];
-            }
-        }
-        if (out_python.is_open())
-        {
-            
-            for (int i = 0; i < row1; i++)
-            {
-                for (int j = 0; j < col2; j++)
-                    out_python << c[i][j] << " ";
-                out_python << std::endl;
-            }
-        }
-        cout << "\nTime = ";
-        cout << time << " tik";
-        out << "Matrix {";
-        out << ka << "x" << ka << '}' << endl;
-        out << "\nTime = ";
-        out << time << " tiks" << endl;
-        out << "_________________________" << endl;
-    }
-    return 0;
 }
 
+int main(int argc, char* argv[])
+{
+    int cr = 100;
+    vector<int> matrix1(cr*cr);
+    vector<int> matrix2(cr * cr);
+    for (int i = 0; i < cr * cr; i++) {
+        matrix1[i] = (rand() % 9 +1 );
+        matrix2[i] = (rand() % 9 +1);
+    }
+    std::ofstream data("C:/Users/admin/Desktop/M.txt");
+    for (int i = 0; i < cr * cr; i++) {
+        data << matrix1[i] << " " << matrix2[i] << " ";
+    }
+    data.close();
 
+    int SIZE = 100;
+    setlocale(LC_ALL, "ru");
+    MPI_Init(&argc, &argv);
+    int my_rank, proc_num;
+    MPI_Comm_size(MPI_COMM_WORLD, &proc_num);
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+    int dimension = 0;
+    vector<int> matrix_1(SIZE * SIZE);
+    vector<int> matrix_2_transponse(SIZE * SIZE);
+    vector<int> matrix_4(SIZE * SIZE);
+    if (my_rank == 0)
+    {
+        vector<int> matrix_2(SIZE * SIZE);
+        ifstream data("C:/Users/admin/Desktop/M.txt");
+        int temp;
+        bool changer = true;
+        int i1 = 0;
+        int i2 = 0;
+        while (data >> temp) {
+            if (changer) {
+                matrix_1[i1] = temp;
+                i1++;
+            }
+            else {
+                matrix_2[i2] = temp;
+                i2++;
+            }
+            changer = !changer;
+        }
+        for (int i = 0; i < SIZE; ++i)
+        {
+            for (int j = 0; j < SIZE; ++j)
+            {
+                matrix_2_transponse[i * SIZE + j] = matrix_2[j * SIZE + i];
+            }
+        }
+        dimension = SIZE;
+    }
+    MPI_Bcast(&dimension, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (my_rank)
+    {
+        vector<int> matrix_2_transponse(SIZE * SIZE);
+    }
+    int local_size = dimension / proc_num;
+    vector<int> local_a_part(local_size * dimension);  
+    vector<int> local_result(local_size * dimension);
+    int* matrix_1_pointer = &matrix_1[0];
+    int* local_a_part_pointer = &local_a_part[0];
+    int* local_result_pointer = &local_result[0];
+    int* matrix_4_pointer = &matrix_4[0];
+    int* matrix_2_transponse_pointer = &matrix_2_transponse[0];
+    MPI_Scatter(matrix_1_pointer + my_rank * dimension * local_size, dimension * local_size, MPI_INT, local_a_part_pointer, dimension * local_size, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(matrix_2_transponse_pointer, dimension * dimension, MPI_INT, 0, MPI_COMM_WORLD);
+    double begin = MPI_Wtime();
+    for (int i = 0; i < local_size; ++i)
+    {
+        for (int j = 0; j < dimension; ++j)
+        {
+            local_result[i * dimension + j] = 0;
+            for (int k = 0; k < dimension; ++k)
+            {
+                local_result[i * dimension + j] += local_a_part[i * dimension + k] * matrix_2_transponse[j * dimension + k];
+            }
+        }
+    }
+    double end = MPI_Wtime();
+    MPI_Gather(local_result_pointer, local_size * dimension, MPI_INT, matrix_4_pointer, dimension * local_size, MPI_INT, 0, MPI_COMM_WORLD);
+    if (my_rank == 0) {
+        ofstream matrix("C:/Users/admin/Desktop/Result_C++.txt");
+        for (long int i = 0; i < SIZE * SIZE; ++i) {
+            matrix << matrix_4[i] << " ";
+        }
+        matrix.close();
+        cout << "Matrix { " << SIZE << " on " << SIZE<<" }"<< endl;
+        cout << "Time = " <<(end - begin)<< "sec" << endl;
+    }
+    MPI_Finalize();
+    return 0;
+}
